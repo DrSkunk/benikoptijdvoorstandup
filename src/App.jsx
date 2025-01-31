@@ -54,7 +54,7 @@ export default function App() {
     <div className="flex flex-col w-screen h-screen justify-center items-center">
       <div
         className={classNames(
-          "font-mono text-8xl",
+          "font-mono text-9xl",
           isTooLate && "text-red-500"
         )}
       >
