@@ -19,11 +19,11 @@ export default function App() {
     setTime(now);
     const standupTime = new Date(now);
     // on monday, wednesday, friday it is 9AM
-    standupTime.setHours(9, 0, 0, 0);
+    standupTime.setHours(9, 1, 0, 0);
     // on tuesday, thursday it is 10AM
     // on weekends there is no standup
     if (now.getDay() === 2 || now.getDay() === 4) {
-      standupTime.setHours(10, 0, 0, 0);
+      standupTime.setHours(10, 1, 0, 0);
     }
     setIsStandupDay(now.getDay() > 0 && now.getDay() < 6);
     setIsTooLate(now > standupTime);
