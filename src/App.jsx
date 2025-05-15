@@ -11,8 +11,12 @@ export default function App() {
   const [time, setTime] = useState(new Date());
   const [isTooLate, setIsTooLate] = useState(false);
   const [isStandupDay, setIsStandupDay] = useState(false);
+  const [remainingTime, setRemainingTime] = useState("");
+  const [elapsedTime, setElapsedTime] = useState("");
+  const [formattedStandupTime, setFormattedStandupTime] = useState("");
 
-  const timeout = useRef(null);
+  // Using any type to avoid type errors with setTimeout
+  const timeout = useRef(undefined);
 
   function update() {
     const now = new Date();
@@ -22,13 +26,49 @@ export default function App() {
     standupTime.setHours(9, 1, 0, 0);
     // on tuesday, thursday it is 10AM
     // on weekends there is no standup
-    if (now.getDay() === 2 || now.getDay() === 4) {
+    // Day of week: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const dayOfWeek = now.getDay();
+    if (dayOfWeek === 2 || dayOfWeek === 4) {
+      // Tuesday or Thursday
       standupTime.setHours(10, 1, 0, 0);
     }
-    setIsStandupDay(now.getDay() > 0 && now.getDay() < 6);
-    setIsTooLate(now > standupTime);
+    setIsStandupDay(dayOfWeek > 0 && dayOfWeek < 6);
+
+    // Calculate late status first
+    const isLate = now > standupTime;
+    setIsTooLate(isLate);
+
+    // Calculate remaining time or elapsed time
+    const timeDiffMs = isLate
+      ? now.getTime() - standupTime.getTime()
+      : standupTime.getTime() - now.getTime();
+
+    const hours = Math.floor(timeDiffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((timeDiffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeDiffMs % (1000 * 60)) / 1000);
+
+    // Format time difference as HH:MM:SS
+    const formattedDiff = `${hours.toString().padStart(2, "0")}:${minutes
+      .toString()
+      .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+    // Format the standup time for display
+    const standupHour = standupTime.getHours();
+    const standupTimeFormatted = `${standupHour}:00`;
+    setFormattedStandupTime(standupTimeFormatted);
+
+    if (isLate) {
+      setElapsedTime(formattedDiff);
+      setRemainingTime("");
+    } else {
+      setRemainingTime(formattedDiff);
+      setElapsedTime("");
+    }
+
     const msUntilNextSecond = 1000 - now.getMilliseconds();
 
+    // Work around type checking by using JS object property assignment
+    // @ts-ignore
     timeout.current = setTimeout(() => {
       update();
     }, msUntilNextSecond);
@@ -38,17 +78,13 @@ export default function App() {
     update();
 
     return () => {
-      if (timeout.current) {
-        clearTimeout(timeout.current);
-      }
+      clearTimeout(timeout.current);
     };
+    // We intentionally exclude update from dependencies to avoid infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formattedTime = time.toLocaleTimeString("nl-BE");
-
-  if (!isStandupDay) {
-    <div>Geen Standup vandaag. Raak wat gras aan</div>;
-  }
 
   return (
     <div className="flex flex-col w-screen h-screen justify-center items-center">
@@ -60,7 +96,25 @@ export default function App() {
       >
         {formattedTime}
       </div>
-      {isTooLate && <MemoizedParticles />}
+
+      {!isStandupDay ? (
+        <div className="font-mono text-4xl mt-4 text-blue-500">
+          Geen Standup vandaag. Raak wat gras aan 🌿
+        </div>
+      ) : (
+        <div
+          className={classNames(
+            "font-mono text-4xl mt-4",
+            isTooLate ? "text-red-500" : "text-green-500"
+          )}
+        >
+          {isTooLate
+            ? `Standup is bezig: ${elapsedTime} geleden begonnen`
+            : `Tijd tot standup (${formattedStandupTime}): ${remainingTime}`}
+        </div>
+      )}
+
+      {isTooLate && isStandupDay && <MemoizedParticles />}
     </div>
   );
 }
